@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Quiz — QuizPlatform</title>
+  <meta name="description" content="Take your timed quiz with live leaderboard updates." />
+  <link rel="stylesheet" href="css/style.css" />
+  <style>
+    .quiz-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 1rem 0;
+      border-bottom: 1px solid var(--glass-border);
+      margin-bottom: 1.5rem;
+      flex-wrap: wrap;
+      gap: 0.8rem;
+    }
+    .quiz-title-area h2 { font-size: 1.1rem; }
+    .quiz-title-area p  { font-size: 0.82rem; color: var(--text-muted); margin-top: 0.15rem; }
+
+    .question-card {
+      background: var(--bg-card);
+      border: 1px solid var(--glass-border);
+      border-radius: var(--radius-lg);
+      padding: 2rem;
+      will-change: transform, opacity; /* GPU accelerated */
+    }
+
+    .question-meta {
+      display: flex;
+      gap: 0.6rem;
+      align-items: center;
+      margin-bottom: 1rem;
+    }
+
+    .question-text {
+      font-size: 1.1rem;
+      font-weight: 600;
+      color: var(--text-primary);
+      line-height: 1.6;
+      margin-bottom: 1.5rem;
+    }
+
+    .nav-buttons {
+      display: flex;
+      justify-content: space-between;
+      margin-top: 1.5rem;
+      gap: 0.8rem;
+    }
+
+    .tf-btn {
+      flex: 1;
+      padding: 1rem;
+      border-radius: var(--radius-md);
+      border: 2px solid var(--glass-border);
+      background: transparent;
+      color: var(--text-primary);
+      font-size: 1rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: var(--transition);
+    }
+    .tf-btn:hover:not(:disabled) { transform: scale(1.02); }
+    .tf-btn.true-btn:hover:not(:disabled),
+    .tf-btn.true-btn.selected {
+      background: rgba(52, 211, 153, 0.15);
+      border-color: var(--accent-success);
+      color: var(--accent-success);
+    }
+    .tf-btn.false-btn:hover:not(:disabled),
+    .tf-btn.false-btn.selected {
+      background: rgba(255, 87, 87, 0.12);
+      border-color: var(--accent-danger);
+      color: var(--accent-danger);
+    }
+
+    .code-input {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.88rem;
+      min-height: 120px;
+      background: rgba(0, 0, 0, 0.3);
+    }
+
+    .answered-overlay {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.6rem 1rem;
+      border-radius: var(--radius-sm);
+      font-size: 0.85rem;
+      font-weight: 600;
+      margin-top: 0.8rem;
+    }
+    .answered-overlay.correct { background: rgba(52, 211, 153, 0.12); color: var(--accent-success); }
+    .answered-overlay.pending { background: rgba(108, 99, 255, 0.12); color: #a09aff; }
+
+    #submit-section {
+      margin-top: 1.5rem;
+      padding: 1.2rem;
+      background: rgba(255, 87, 87, 0.05);
+      border: 1px solid rgba(255, 87, 87, 0.2);
+      border-radius: var(--radius-md);
+      text-align: center;
+    }
+
+    #submit-section p { color: var(--text-secondary); font-size: 0.88rem; margin-bottom: 0.8rem; }
+
+    .lb-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 1rem;
+    }
+
+    .lb-last-updated {
+      font-size: 0.72rem;
+      color: var(--text-muted);
+    }
+  </style>
+</head>
+<body>
+
+  <nav class="navbar">
+    <div class="container navbar-inner">
+      <div class="navbar-brand"><span class="icon">⚡</span> QuizPlatform</div>
+      <div style="display:flex;align-items:center;gap:1rem;">
+        <span id="nav-student-id" style="font-size:0.85rem;color:var(--text-muted);"></span>
+        <a href="/" class="btn btn-outline btn-sm">🏠 Home</a>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Loading screen -->
+  <div id="loading-screen" class="loading-screen">
+    <div class="spinner"></div>
+    <p>Loading quiz...</p>
+  </div>
+
+  <!-- Error screen -->
+  <div id="error-screen" style="display:none;" class="loading-screen">
+    <span style="font-size:3rem">😕</span>
+    <h2>Session not found</h2>
+    <p>Please start a quiz from the home page.</p>
+    <a href="/" class="btn btn-primary" style="margin-top:1rem;">← Back to Home</a>
+  </div>
+
+  <!-- Main quiz UI -->
+  <div id="quiz-main" style="display:none;">
+    <div class="container-wide">
+
+      <!-- Header -->
+      <div class="quiz-header">
+        <div class="quiz-title-area">
+          <h2 id="quiz-title-display">Quiz</h2>
+          <p id="quiz-student-display"></p>
+        </div>
+        <div style="display:flex;align-items:center;gap:1.2rem;">
+          <div>
+            <div style="font-size:0.75rem;color:var(--text-muted);text-align:center;margin-bottom:0.2rem;">TIME LEFT</div>
+            <div class="timer-ring" id="timer-ring">
+              <svg width="80" height="80" viewBox="0 0 80 80">
+                <circle cx="40" cy="40" r="34" fill="none" stroke="rgba(255,255,255,0.06)" stroke-width="6"/>
+                <circle id="timer-arc" cx="40" cy="40" r="34" fill="none"
+                  stroke="url(#timerGrad)" stroke-width="6"
+                  stroke-linecap="round"
+                  stroke-dasharray="213.6"
+                  stroke-dashoffset="0"/>
+                <defs>
+                  <linearGradient id="timerGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+                    <stop offset="0%" style="stop-color:#6c63ff"/>
+                    <stop offset="100%" style="stop-color:#3ecfcf"/>
+                  </linearGradient>
+                </defs>
+              </svg>
+              <div class="timer-display" id="timer-display">--:--</div>
+            </div>
+          </div>
+          <div>
+            <div style="font-size:0.75rem;color:var(--text-muted);text-align:center;margin-bottom:0.4rem;">PROGRESS</div>
+            <div style="font-size:1.4rem;font-weight:800;text-align:center;" id="progress-fraction">0/0</div>
+            <div class="progress-bar" style="width:100px;margin-top:0.3rem;">
+              <div class="progress-fill" id="progress-fill" style="width:0%;"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Split layout -->
+      <div class="quiz-layout">
+
+        <!-- Left: Question panel -->
+        <div>
+          <!-- Question navigation dots -->
+          <div class="card" style="padding:1.2rem;margin-bottom:1.2rem;">
+            <div class="section-header" style="margin-bottom:0.8rem;">
+              <span class="section-title">Questions</span>
+            </div>
+            <div class="q-nav" id="q-nav"></div>
+          </div>
+
+          <!-- Question card -->
+          <div id="question-area"></div>
+
+          <!-- Submit quiz button -->
+          <div id="submit-section">
+            <p>Answered all questions? Submit your quiz now.</p>
+            <button class="btn btn-danger btn-lg" id="submit-btn">
+              🏁 Submit Quiz
+            </button>
+          </div>
+        </div>
+
+        <!-- Right: Live leaderboard sidebar -->
+        <div class="quiz-sidebar">
+          <div class="card">
+            <div class="lb-header">
+              <div style="display:flex;align-items:center;gap:0.5rem;">
+                <span class="live-dot"></span>
+                <span style="font-size:0.85rem;font-weight:700;">Live Leaderboard</span>
+              </div>
+              <span class="lb-last-updated" id="lb-updated">—</span>
+            </div>
+            <div class="leaderboard-list" id="leaderboard-list">
+              <p style="font-size:0.82rem;text-align:center;color:var(--text-muted);">Loading...</p>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- Auto-submit modal -->
+  <div class="modal-overlay" id="timeout-modal">
+    <div class="modal">
+      <div class="modal-header">
+        <span class="modal-icon">⏰</span>
+        <h2>Time's Up!</h2>
+        <p>Your quiz has been auto-submitted.</p>
+      </div>
+      <div style="text-align:center;margin-top:1rem;">
+        <div class="spinner"></div>
+        <p style="margin-top:0.5rem;font-size:0.85rem;">Saving results...</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Submit confirm modal -->
+  <div class="modal-overlay" id="confirm-modal">
+    <div class="modal">
+      <div class="modal-header">
+        <span class="modal-icon">🏁</span>
+        <h2>Submit Quiz?</h2>
+        <p id="confirm-msg">You have answered X out of Y questions.</p>
+      </div>
+      <div style="display:flex;gap:0.8rem;margin-top:1.2rem;">
+        <button class="btn btn-outline" id="confirm-cancel">Keep Answering</button>
+        <button class="btn btn-danger" id="confirm-submit" style="flex:1;">Yes, Submit</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast-container" id="toast-container"></div>
+
+  <script src="js/quiz.js"></script>
+</body>
+</html>

@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>QuizPlatform — Online Quiz & Leaderboard</title>
+  <meta name="description" content="Take timed quizzes, compete on live leaderboards, and track your performance across subjects." />
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+
+  <!-- ── Navbar ───────────────────────────────────────────── -->
+  <nav class="navbar">
+    <div class="container navbar-inner">
+      <div class="navbar-brand">
+        <span class="icon">⚡</span>
+        QuizPlatform
+      </div>
+      <div class="navbar-links">
+        <a href="/" class="active" id="nav-home">Home</a>
+        <a href="/faculty-page" id="nav-faculty">Faculty</a>
+      </div>
+    </div>
+  </nav>
+
+  <!-- ── Hero ─────────────────────────────────────────────── -->
+  <section class="hero">
+    <div class="container">
+      <div class="hero-eyebrow">
+        <span class="live-dot"></span>
+        Live leaderboard · Timed quizzes · Real-time scoring
+      </div>
+      <h1>
+        Test Your Knowledge<br/>
+        <span class="hero-gradient-text">Compete in Real-Time</span>
+      </h1>
+      <p>
+        Take timed quizzes powered by MongoDB &amp; Redis. Watch your name climb the live leaderboard as you answer correctly.
+      </p>
+      <div class="hero-actions">
+        <button class="btn btn-primary btn-lg" id="browse-btn">
+          🎯 Browse Quizzes
+        </button>
+        <a href="/faculty-page" class="btn btn-outline btn-lg">
+          👩‍🏫 Faculty Login
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Quizzes Section ───────────────────────────────────── -->
+  <section style="padding: 1rem 0 4rem;">
+    <div class="container">
+      <div class="section-header">
+        <span class="section-title">Available Quizzes</span>
+        <div class="live-dot"></div>
+      </div>
+
+      <div id="quizzes-loading" class="loading-screen" style="min-height: 200px;">
+        <div class="spinner"></div>
+        <p>Loading quizzes...</p>
+      </div>
+
+      <div class="quiz-grid" id="quiz-grid" style="display:none;"></div>
+
+      <div id="quizzes-empty" style="display:none; text-align:center; padding:3rem;">
+        <p style="font-size:1.3rem">🏜️ No quizzes available yet.</p>
+        <p>Ask your faculty to create some!</p>
+        <a href="/faculty-page" class="btn btn-primary" style="margin-top:1rem">Go to Faculty Panel</a>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Start Quiz Modal ──────────────────────────────────── -->
+  <div class="modal-overlay" id="start-modal">
+    <div class="modal">
+      <div class="modal-header">
+        <span class="modal-icon">🚀</span>
+        <h2 id="modal-quiz-title">Start Quiz</h2>
+        <p id="modal-quiz-info" style="margin-top:0.4rem;font-size:0.9rem;"></p>
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="student-id-input">Your Student ID / Name</label>
+        <input
+          type="text"
+          id="student-id-input"
+          class="form-control"
+          placeholder="e.g. alice, student123..."
+          autocomplete="off"
+        />
+      </div>
+      <div style="display:flex; gap:0.8rem; margin-top:1.2rem;">
+        <button class="btn btn-outline" id="modal-cancel">Cancel</button>
+        <button class="btn btn-primary" id="modal-start" style="flex:1;">
+          Start Quiz ⚡
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Features strip ───────────────────────────────────── -->
+  <section style="padding: 2rem 0 4rem; border-top: 1px solid rgba(255,255,255,0.05);">
+    <div class="container">
+      <div class="stats-grid">
+        <div class="stat-box">
+          <div class="stat-value" id="totalQuestions">—</div>
+          <div class="stat-label">Questions</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-value" id="totalQuizzes">—</div>
+          <div class="stat-label">Quizzes</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-value">⚡</div>
+          <div class="stat-label">Live Leaderboard</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-value">🔒</div>
+          <div class="stat-label">Anti-Cheat</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Toast container ──────────────────────────────────── -->
+  <div class="toast-container" id="toast-container"></div>
+
+  <script>
+    const API = '';
+
+    // ── Utilities ────────────────────────────────────────────
+    function showToast(msg, type = 'info') {
+      const icons = { success: '✅', error: '❌', info: 'ℹ️' };
+      const el = document.createElement('div');
+      el.className = `toast ${type}`;
+      el.innerHTML = `<span>${icons[type]}</span><span>${msg}</span>`;
+      document.getElementById('toast-container').appendChild(el);
+      setTimeout(() => el.remove(), 4000);
+    }
+
+    let selectedQuizId = null;
+    let selectedQuizDuration = 0;
+    let selectedQuizTitle = '';
+
+    // ── Load quizzes ──────────────────────────────────────────
+    async function loadQuizzes() {
+      try {
+        const res = await fetch(`${API}/quiz/list`);
+        const data = await res.json();
+        const quizzes = data.quizzes || [];
+
+        document.getElementById('quizzes-loading').style.display = 'none';
+        document.getElementById('totalQuizzes').textContent = quizzes.length;
+
+        let totalQ = 0;
+        quizzes.forEach(q => totalQ += q.questionCount);
+        document.getElementById('totalQuestions').textContent = totalQ;
+
+        if (quizzes.length === 0) {
+          document.getElementById('quizzes-empty').style.display = 'block';
+          return;
+        }
+
+        document.getElementById('quiz-grid').style.display = 'grid';
+        const grid = document.getElementById('quiz-grid');
+
+        const subjectColors = {
+          JavaScript: '--accent-warning',
+          Python:     '--accent-secondary',
+          Databases:  '--accent-primary',
+          Networking: '--accent-danger',
+        };
+
+        quizzes.forEach(quiz => {
+          const mins = Math.floor(quiz.duration / 60);
+          const color = `var(${subjectColors[quiz.subject] || '--accent-primary'})`;
+          const card = document.createElement('div');
+          card.className = 'quiz-card';
+          card.style.borderTop = `3px solid ${color}`;
+          card.dataset.id = quiz._id;
+          card.innerHTML = `
+            <div class="quiz-card-title">${quiz.title}</div>
+            <p style="font-size:0.83rem;margin:0.3rem 0;">${quiz.subject}</p>
+            <div class="quiz-card-meta">
+              <span class="badge badge-primary">📝 ${quiz.questionCount} Qs</span>
+              <span class="badge badge-info">⏱ ${mins} min</span>
+            </div>
+            <button class="btn btn-primary" style="width:100%;margin-top:1rem;" data-id="${quiz._id}" data-title="${quiz.title}" data-dur="${quiz.duration}">
+              Start Quiz →
+            </button>
+          `;
+          card.querySelector('.btn').addEventListener('click', (e) => {
+            e.stopPropagation();
+            openStartModal(quiz._id, quiz.title, quiz.duration, quiz.questionCount);
+          });
+          grid.appendChild(card);
+        });
+      } catch (err) {
+        document.getElementById('quizzes-loading').style.display = 'none';
+        document.getElementById('quizzes-empty').style.display = 'block';
+        showToast('Could not load quizzes — is the server running?', 'error');
+      }
+    }
+
+    function openStartModal(id, title, duration, count) {
+      selectedQuizId = id;
+      selectedQuizDuration = duration;
+      selectedQuizTitle = title;
+      document.getElementById('modal-quiz-title').textContent = title;
+      document.getElementById('modal-quiz-info').textContent =
+        `${count} questions · ${Math.floor(duration / 60)} minutes`;
+      document.getElementById('student-id-input').value = '';
+      document.getElementById('start-modal').classList.add('open');
+      setTimeout(() => document.getElementById('student-id-input').focus(), 200);
+    }
+
+    document.getElementById('modal-cancel').addEventListener('click', () => {
+      document.getElementById('start-modal').classList.remove('open');
+    });
+
+    document.getElementById('modal-start').addEventListener('click', async () => {
+      const studentId = document.getElementById('student-id-input').value.trim();
+      if (!studentId) { showToast('Please enter your student ID', 'error'); return; }
+      const btn = document.getElementById('modal-start');
+      btn.disabled = true; btn.textContent = 'Starting...';
+
+      try {
+        const res = await fetch(`${API}/quiz/${selectedQuizId}/start`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ studentId }),
+        });
+        const data = await res.json();
+        if (!res.ok) { showToast(data.error || 'Failed to start', 'error'); btn.disabled = false; btn.textContent = 'Start Quiz ⚡'; return; }
+
+        // Store state for quiz page
+        sessionStorage.setItem('quizState', JSON.stringify({
+          quizId: selectedQuizId,
+          studentId,
+          questions: data.questions,
+          duration: data.duration,
+          remainingTime: data.remainingTime,
+          quizTitle: data.quizTitle,
+          answers: data.answers || {},
+        }));
+
+        window.location.href = '/quiz-page';
+      } catch (err) {
+        showToast('Server error — check if backend is running', 'error');
+        btn.disabled = false; btn.textContent = 'Start Quiz ⚡';
+      }
+    });
+
+    document.getElementById('student-id-input').addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') document.getElementById('modal-start').click();
+    });
+
+    document.getElementById('browse-btn').addEventListener('click', () => {
+      document.getElementById('quiz-grid').scrollIntoView({ behavior: 'smooth' });
+    });
+
+    // Close modal on backdrop
+    document.getElementById('start-modal').addEventListener('click', (e) => {
+      if (e.target === e.currentTarget) e.currentTarget.classList.remove('open');
+    });
+
+    loadQuizzes();
+  </script>
+</body>
+</html>

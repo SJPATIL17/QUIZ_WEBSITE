@@ -1,0 +1,406 @@
+{
+  "info": {
+    "name": "Online Quiz Platform - NoSQL Project",
+    "description": "Complete API test collection for the Online Quiz Platform built with Node.js, Express, MongoDB and Redis.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3000",
+      "type": "string"
+    },
+    {
+      "key": "quizId_JS",
+      "value": "69d9497ef2a0d3c5db54d207",
+      "type": "string",
+      "description": "JavaScript Fundamentals Quiz ID"
+    },
+    {
+      "key": "quizId_DB",
+      "value": "69d9497ef2a0d3c5db54d208",
+      "type": "string",
+      "description": "Databases & NoSQL Quiz ID"
+    },
+    {
+      "key": "quizId_PY",
+      "value": "69d9497ef2a0d3c5db54d209",
+      "type": "string",
+      "description": "Python & Networking Mix Quiz ID"
+    },
+    {
+      "key": "studentId",
+      "value": "my_student",
+      "type": "string",
+      "description": "Change this to your name!"
+    }
+  ],
+  "item": [
+    {
+      "name": "OBJECTIVE 1 - MongoDB",
+      "item": [
+        {
+          "name": "List All Quizzes",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/quiz/list",
+              "host": ["{{baseUrl}}"],
+              "path": ["quiz", "list"]
+            },
+            "description": "Get all active quizzes from MongoDB"
+          }
+        },
+        {
+          "name": "List All Questions (Faculty)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/faculty/questions",
+              "host": ["{{baseUrl}}"],
+              "path": ["faculty", "questions"]
+            },
+            "description": "Returns all 35 questions from MongoDB questions collection"
+          }
+        },
+        {
+          "name": "Filter Questions by Subject",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/faculty/questions?subject=JavaScript&difficulty=medium",
+              "host": ["{{baseUrl}}"],
+              "path": ["faculty", "questions"],
+              "query": [
+                { "key": "subject", "value": "JavaScript" },
+                { "key": "difficulty", "value": "medium" }
+              ]
+            },
+            "description": "Filter questions by subject and difficulty"
+          }
+        },
+        {
+          "name": "Create New Question (MCQ)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"question\": \"Which keyword defines a constant in JavaScript?\",\n  \"type\": \"MCQ\",\n  \"difficulty\": \"easy\",\n  \"subject\": \"JavaScript\",\n  \"correct_answer\": \"const\",\n  \"attributes\": {\n    \"options\": [\"var\", \"let\", \"const\", \"define\"],\n    \"option_count\": 4\n  }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/faculty/question",
+              "host": ["{{baseUrl}}"],
+              "path": ["faculty", "question"]
+            },
+            "description": "Create a new MCQ question — uses Attribute Pattern (options stored in attributes sub-document)"
+          }
+        },
+        {
+          "name": "Create New Question (True/False)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"question\": \"MongoDB is an open-source database.\",\n  \"type\": \"true_false\",\n  \"difficulty\": \"easy\",\n  \"subject\": \"Databases\",\n  \"correct_answer\": \"true\",\n  \"attributes\": {}\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/faculty/question",
+              "host": ["{{baseUrl}}"],
+              "path": ["faculty", "question"]
+            },
+            "description": "Create a true/false question — no extra attributes needed"
+          }
+        },
+        {
+          "name": "Create New Question (Coding)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"question\": \"Write Python code to check if a number n is even.\",\n  \"type\": \"coding\",\n  \"difficulty\": \"easy\",\n  \"subject\": \"Python\",\n  \"correct_answer\": \"n % 2 == 0\",\n  \"attributes\": {\n    \"test_cases\": [\n      { \"input\": \"4\", \"expected_output\": \"True\" },\n      { \"input\": \"7\", \"expected_output\": \"False\" }\n    ]\n  }\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/faculty/question",
+              "host": ["{{baseUrl}}"],
+              "path": ["faculty", "question"]
+            },
+            "description": "Create a coding question — test_cases stored in attributes (Attribute Pattern)"
+          }
+        },
+        {
+          "name": "Create New Quiz",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"My New Quiz\",\n  \"subject\": \"JavaScript\",\n  \"duration\": 600,\n  \"question_ids\": []\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/faculty/quiz",
+              "host": ["{{baseUrl}}"],
+              "path": ["faculty", "quiz"]
+            },
+            "description": "Create a new quiz. Replace question_ids array with actual question _id values from MongoDB"
+          }
+        }
+      ]
+    },
+    {
+      "name": "OBJECTIVE 2 - Redis (Quiz Flow)",
+      "item": [
+        {
+          "name": "START QUIZ (Creates Redis Session + TTL)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"studentId\": \"{{studentId}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/quiz/{{quizId_JS}}/start",
+              "host": ["{{baseUrl}}"],
+              "path": ["quiz", "{{quizId_JS}}", "start"]
+            },
+            "description": "Starts a quiz session.\n\nRedis operations performed:\n  HSET session:<quizId>:<studentId> currentQuestion 0 answers {} startTime <timestamp>\n  EXPIRE session:<quizId>:<studentId> 600\n  ZADD leaderboard:<quizId> NX 0 <studentId>\n\nReturns: questions array (without correct_answer — anti-cheat), duration, remainingTime"
+          }
+        },
+        {
+          "name": "SUBMIT ANSWER - Q1 (Correct Answer)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"studentId\": \"{{studentId}}\",\n  \"questionIndex\": 0,\n  \"answer\": \"Float\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/quiz/{{quizId_JS}}/answer",
+              "host": ["{{baseUrl}}"],
+              "path": ["quiz", "{{quizId_JS}}", "answer"]
+            },
+            "description": "Submit answer for Question 1 (correct answer = Float).\n\nRedis operations:\n  SET answer:<quizId>:<studentId>:0 'Float' NX EX 600   ← SPAM PREVENTION\n  HSET session:... answers '{0: Float}'\n  ZINCRBY leaderboard:<quizId> 10 <studentId>           ← SCORE UPDATE\n\nReturns: { correct: true, pointsEarned: 10 }"
+          }
+        },
+        {
+          "name": "SUBMIT ANSWER - Q1 AGAIN (409 Blocked by Redis NX)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"studentId\": \"{{studentId}}\",\n  \"questionIndex\": 0,\n  \"answer\": \"String\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/quiz/{{quizId_JS}}/answer",
+              "host": ["{{baseUrl}}"],
+              "path": ["quiz", "{{quizId_JS}}", "answer"]
+            },
+            "description": "SPAM PREVENTION TEST — Try to answer Q1 again.\n\nRedis SET NX returns nil (key already exists) → server returns 409 Conflict.\nThis proves one answer per question is enforced.\n\nExpected response: 409 Already submitted for this question"
+          }
+        },
+        {
+          "name": "SUBMIT ANSWER - Q2 (Wrong Answer)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"studentId\": \"{{studentId}}\",\n  \"questionIndex\": 1,\n  \"answer\": \"null\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/quiz/{{quizId_JS}}/answer",
+              "host": ["{{baseUrl}}"],
+              "path": ["quiz", "{{quizId_JS}}", "answer"]
+            },
+            "description": "Submit wrong answer for Q2 (typeof null). Correct = 'object'.\nReturns: { correct: false, pointsEarned: 0 }"
+          }
+        },
+        {
+          "name": "SUBMIT ANSWER - Q3 (Correct)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"studentId\": \"{{studentId}}\",\n  \"questionIndex\": 2,\n  \"answer\": \"JSON.parse()\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/quiz/{{quizId_JS}}/answer",
+              "host": ["{{baseUrl}}"],
+              "path": ["quiz", "{{quizId_JS}}", "answer"]
+            },
+            "description": "Correct answer for Q3 (JSON string to object)."
+          }
+        },
+        {
+          "name": "GET LIVE LEADERBOARD (ZREVRANGE top 10)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/quiz/{{quizId_JS}}/leaderboard",
+              "host": ["{{baseUrl}}"],
+              "path": ["quiz", "{{quizId_JS}}", "leaderboard"]
+            },
+            "description": "Fetch live leaderboard.\n\nRedis command: ZREVRANGE leaderboard:<quizId> 0 9 WITHSCORES\n\nReturns top 10 students with their scores in real-time.\nThis updates every 5 seconds in the frontend."
+          }
+        },
+        {
+          "name": "SUBMIT QUIZ (Redis → MongoDB → Delete Redis Keys)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"studentId\": \"{{studentId}}\",\n  \"autoSubmit\": false\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/quiz/{{quizId_JS}}/submit",
+              "host": ["{{baseUrl}}"],
+              "path": ["quiz", "{{quizId_JS}}", "submit"]
+            },
+            "description": "Final quiz submission.\n\nFlow:\n  1. HGETALL session:<quizId>:<studentId>   ← Read all answers from Redis\n  2. Grade all answers\n  3. Save QuizAttempt document to MongoDB\n  4. ZREVRANK leaderboard:<quizId> <studentId>  ← Get final rank\n  5. DEL session:<quizId>:<studentId>       ← Clean up Redis\n  6. DEL answer:<quizId>:<studentId>:0,1,2... ← Clean up answer locks\n\nReturns: score, maxScore, rank, timeTaken, per-question breakdown"
+          }
+        }
+      ]
+    },
+    {
+      "name": "OBJECTIVE 1 - Aggregations (Analytics)",
+      "item": [
+        {
+          "name": "Aggregation 1 - Average Score Per Quiz",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/faculty/analytics/avg-score",
+              "host": ["{{baseUrl}}"],
+              "path": ["faculty", "analytics", "avg-score"]
+            },
+            "description": "MongoDB Aggregation Pipeline:\n  $group by quiz_id → $avg score\n  $lookup quizzes collection\n  $project quizTitle, averageScore, percentage\n  $sort averageScore desc"
+          }
+        },
+        {
+          "name": "Aggregation 2 - Top 5 Students Overall",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/faculty/analytics/top-students",
+              "host": ["{{baseUrl}}"],
+              "path": ["faculty", "analytics", "top-students"]
+            },
+            "description": "MongoDB Aggregation Pipeline:\n  $group by student_id → $sum score\n  $sort totalScore desc\n  $limit 5"
+          }
+        },
+        {
+          "name": "Aggregation 3 - Hard Questions (correct rate < 30%)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/faculty/analytics/difficult-questions",
+              "host": ["{{baseUrl}}"],
+              "path": ["faculty", "analytics", "difficult-questions"]
+            },
+            "description": "MongoDB Aggregation Pipeline:\n  $match times_answered > 0\n  $addFields correctRate = times_correct / times_answered\n  $match correctRate < 0.3\n  $sort correctRate asc (hardest first)"
+          }
+        },
+        {
+          "name": "Aggregation 4 - Subject-Wise Comparison",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/faculty/analytics/subject-comparison",
+              "host": ["{{baseUrl}}"],
+              "path": ["faculty", "analytics", "subject-comparison"]
+            },
+            "description": "MongoDB Aggregation Pipeline:\n  $lookup quizzes → get subject\n  $group by subject → $avg, $max, $min score\n  $sort avgScore desc"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Other Quizzes (DB + Python)",
+      "item": [
+        {
+          "name": "Start Databases Quiz",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"studentId\": \"{{studentId}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/quiz/{{quizId_DB}}/start",
+              "host": ["{{baseUrl}}"],
+              "path": ["quiz", "{{quizId_DB}}", "start"]
+            }
+          }
+        },
+        {
+          "name": "Get Leaderboard - Databases Quiz",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/quiz/{{quizId_DB}}/leaderboard",
+              "host": ["{{baseUrl}}"],
+              "path": ["quiz", "{{quizId_DB}}", "leaderboard"]
+            }
+          }
+        },
+        {
+          "name": "Start Python+Networking Quiz",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"studentId\": \"{{studentId}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/quiz/{{quizId_PY}}/start",
+              "host": ["{{baseUrl}}"],
+              "path": ["quiz", "{{quizId_PY}}", "start"]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

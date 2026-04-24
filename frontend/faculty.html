@@ -1,0 +1,587 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Faculty Dashboard — QuizPlatform</title>
+  <meta name="description" content="Create questions, build quizzes, and view analytics." />
+  <link rel="stylesheet" href="css/style.css" />
+  <style>
+    .tabs { display: flex; gap: 0.4rem; border-bottom: 1px solid var(--glass-border); margin-bottom: 1.5rem; }
+    .tab-btn {
+      padding: 0.6rem 1.2rem;
+      border: none;
+      background: transparent;
+      color: var(--text-secondary);
+      font-family: 'Inter', sans-serif;
+      font-size: 0.9rem;
+      font-weight: 500;
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+      transition: var(--transition-fast);
+    }
+    .tab-btn.active { color: var(--accent-primary); border-bottom-color: var(--accent-primary); }
+    .tab-btn:hover  { color: var(--text-primary); }
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
+
+    .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; }
+    @media (max-width: 768px) { .two-col { grid-template-columns: 1fr; } }
+
+    .options-editor { display: flex; flex-direction: column; gap: 0.5rem; }
+    .option-row { display: flex; gap: 0.5rem; align-items: center; }
+    .option-row input { flex: 1; }
+
+    #q-type-specific { min-height: 80px; }
+
+    .analytics-card {
+      background: var(--bg-card);
+      border: 1px solid var(--glass-border);
+      border-radius: var(--radius-md);
+      padding: 1.2rem;
+      margin-bottom: 1rem;
+      overflow-x: auto;
+    }
+  </style>
+</head>
+<body>
+
+  <nav class="navbar">
+    <div class="container navbar-inner">
+      <div class="navbar-brand"><span class="icon">⚡</span> Faculty Dashboard</div>
+      <div class="navbar-links">
+        <a href="/">🏠 Home</a>
+        <a href="/faculty-page" class="active">Faculty</a>
+      </div>
+    </div>
+  </nav>
+
+  <div class="container" style="padding-top:2rem;padding-bottom:4rem;">
+
+    <h1 style="margin-bottom:0.5rem;">Faculty Dashboard</h1>
+    <p style="margin-bottom:2rem;">Create questions, assemble quizzes, and review analytics.</p>
+
+    <!-- TABS -->
+    <div class="tabs">
+      <button class="tab-btn active" data-tab="create-question">➕ Add Question</button>
+      <button class="tab-btn" data-tab="create-quiz">📋 Create Quiz</button>
+      <button class="tab-btn" data-tab="view-questions">📚 Questions</button>
+      <button class="tab-btn" data-tab="analytics">📊 Analytics</button>
+    </div>
+
+    <!-- ── TAB: Create Question ─────────────────────────────── -->
+    <div class="tab-panel active" id="tab-create-question">
+      <div class="two-col">
+        <div class="card">
+          <h3 style="margin-bottom:1.2rem;">New Question</h3>
+          <form id="question-form">
+            <div class="form-group">
+              <label class="form-label">Question Text *</label>
+              <textarea id="q-text" class="form-control" rows="3" placeholder="Enter your question..." required></textarea>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;">
+              <div class="form-group">
+                <label class="form-label">Type *</label>
+                <select id="q-type" class="form-control" required>
+                  <option value="MCQ">MCQ</option>
+                  <option value="true_false">True / False</option>
+                  <option value="coding">Coding</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Difficulty *</label>
+                <select id="q-difficulty" class="form-control" required>
+                  <option value="easy">Easy</option>
+                  <option value="medium">Medium</option>
+                  <option value="hard">Hard</option>
+                </select>
+              </div>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Subject *</label>
+              <input id="q-subject" class="form-control" placeholder="e.g. JavaScript, Python..." required />
+            </div>
+            <div class="form-group">
+              <label class="form-label">Correct Answer *</label>
+              <input id="q-correct" class="form-control" placeholder="Exact correct answer text (case-insensitive)" required />
+            </div>
+
+            <!-- Dynamic fields -->
+            <div id="q-type-specific"></div>
+
+            <button type="submit" class="btn btn-primary" style="width:100%;margin-top:0.5rem;">
+              ➕ Add Question
+            </button>
+          </form>
+        </div>
+
+        <div class="card">
+          <h3 style="margin-bottom:1rem;">Type-Specific Fields</h3>
+          <div id="type-help" style="font-size:0.85rem;color:var(--text-secondary);">
+            <p><strong style="color:var(--text-primary);">MCQ</strong> — Enter 4 options below. The correct answer must match one exactly.</p>
+            <p style="margin-top:0.8rem;"><strong style="color:var(--text-primary);">True / False</strong> — Set correct answer to <code>true</code> or <code>false</code>.</p>
+            <p style="margin-top:0.8rem;"><strong style="color:var(--text-primary);">Coding</strong> — Add test cases (input → expected output). Correct answer = expected expression/output.</p>
+          </div>
+          <div class="divider"></div>
+          <div id="type-preview"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── TAB: Create Quiz ──────────────────────────────────── -->
+    <div class="tab-panel" id="tab-create-quiz">
+      <div class="two-col">
+        <div class="card">
+          <h3 style="margin-bottom:1.2rem;">New Quiz</h3>
+          <form id="quiz-form">
+            <div class="form-group">
+              <label class="form-label">Quiz Title *</label>
+              <input id="quiz-title" class="form-control" placeholder="e.g. JavaScript Fundamentals" required />
+            </div>
+            <div class="form-group">
+              <label class="form-label">Subject *</label>
+              <input id="quiz-subject" class="form-control" placeholder="e.g. JavaScript" required />
+            </div>
+            <div class="form-group">
+              <label class="form-label">Duration (seconds) *</label>
+              <input id="quiz-duration" class="form-control" type="number" value="600" min="60" required />
+              <small style="color:var(--text-muted);font-size:0.78rem;">600 = 10 min · 900 = 15 min · 1800 = 30 min</small>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Select Questions *</label>
+              <div id="question-picker" style="max-height:300px;overflow-y:auto;border:1px solid var(--glass-border);border-radius:var(--radius-sm);padding:0.6rem;">
+                <p style="color:var(--text-muted);font-size:0.85rem;">Loading questions...</p>
+              </div>
+            </div>
+            <button type="submit" class="btn btn-primary" style="width:100%;margin-top:0.5rem;">
+              📋 Create Quiz
+            </button>
+          </form>
+        </div>
+        <div class="card">
+          <h3>Selected Questions Preview</h3>
+          <div id="selected-preview" style="margin-top:1rem;font-size:0.85rem;color:var(--text-muted);">
+            No questions selected yet.
+          </div>
+          <div class="divider"></div>
+          <div style="font-size:0.82rem;color:var(--text-secondary);">
+            <p>💡 Tips:</p>
+            <ul style="margin-left:1rem;margin-top:0.5rem;line-height:1.8;">
+              <li>Mix difficulty levels</li>
+              <li>Use different question types</li>
+              <li>Duration = 1–2 min per question recommended</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── TAB: View Questions ───────────────────────────────── -->
+    <div class="tab-panel" id="tab-view-questions">
+      <div style="display:flex;gap:0.8rem;flex-wrap:wrap;margin-bottom:1rem;">
+        <select id="filter-subject" class="form-control" style="width:auto;">
+          <option value="">All Subjects</option>
+        </select>
+        <select id="filter-type" class="form-control" style="width:auto;">
+          <option value="">All Types</option>
+          <option value="MCQ">MCQ</option>
+          <option value="true_false">True / False</option>
+          <option value="coding">Coding</option>
+        </select>
+        <select id="filter-difficulty" class="form-control" style="width:auto;">
+          <option value="">All Difficulties</option>
+          <option value="easy">Easy</option>
+          <option value="medium">Medium</option>
+          <option value="hard">Hard</option>
+        </select>
+        <button class="btn btn-outline" id="filter-btn">🔍 Filter</button>
+      </div>
+      <div id="questions-list"></div>
+    </div>
+
+    <!-- ── TAB: Analytics ───────────────────────────────────── -->
+    <div class="tab-panel" id="tab-analytics">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;margin-bottom:1.5rem;" class="analytics-top">
+        <div class="analytics-card">
+          <div class="section-header"><span class="section-title">⌀ Average Score Per Quiz</span></div>
+          <div id="analytics-avg"></div>
+        </div>
+        <div class="analytics-card">
+          <div class="section-header"><span class="section-title">🏆 Top 5 Students</span></div>
+          <div id="analytics-top"></div>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;" class="analytics-bottom">
+        <div class="analytics-card">
+          <div class="section-header"><span class="section-title">❓ Difficult Questions (correct rate &lt; 30%)</span></div>
+          <div id="analytics-hard"></div>
+        </div>
+        <div class="analytics-card">
+          <div class="section-header"><span class="section-title">📚 Subject-Wise Comparison</span></div>
+          <div id="analytics-subject"></div>
+        </div>
+      </div>
+
+      <div class="analytics-card" style="margin-top:1.5rem;">
+        <div class="section-header"><span class="section-title">🔍 Redis Commands Reference</span></div>
+        <pre style="background:rgba(0,0,0,0.3);padding:1rem;border-radius:var(--radius-sm);font-family:'JetBrains Mono',monospace;font-size:0.78rem;color:var(--accent-secondary);overflow-x:auto;">
+# SESSION MANAGEMENT (HASH + TTL)
+HSET session:&lt;quizId&gt;:&lt;studentId&gt; currentQuestion 0 answers "{}" startTime 1712345678000
+EXPIRE session:&lt;quizId&gt;:&lt;studentId&gt; 600       # TTL = quiz duration (seconds)
+HGETALL session:&lt;quizId&gt;:&lt;studentId&gt;            # Read session
+TTL session:&lt;quizId&gt;:&lt;studentId&gt;                # Check remaining time
+
+# SPAM PREVENTION (NX = only set if key doesn't exist)
+SET answer:&lt;quizId&gt;:&lt;studentId&gt;:&lt;qNo&gt; "A" NX EX 600
+
+# LIVE LEADERBOARD (Sorted Set)
+ZADD leaderboard:&lt;quizId&gt; NX 0 &lt;studentId&gt;      # Add with initial score
+ZINCRBY leaderboard:&lt;quizId&gt; 10 &lt;studentId&gt;      # Increment score on correct
+ZREVRANGE leaderboard:&lt;quizId&gt; 0 9 WITHSCORES    # Top 10 with scores
+ZREVRANK leaderboard:&lt;quizId&gt; &lt;studentId&gt;         # Get rank (0-indexed)
+
+# END OF QUIZ — Delete session keys
+DEL session:&lt;quizId&gt;:&lt;studentId&gt;
+DEL answer:&lt;quizId&gt;:&lt;studentId&gt;:0
+DEL answer:&lt;quizId&gt;:&lt;studentId&gt;:1
+        </pre>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="toast-container" id="toast-container"></div>
+
+  <script>
+    const API = '';
+
+    // ── Toast ────────────────────────────────────────────────
+    function showToast(msg, type = 'info') {
+      const icons = { success: '✅', error: '❌', info: 'ℹ️' };
+      const el = document.createElement('div');
+      el.className = `toast ${type}`;
+      el.innerHTML = `<span>${icons[type]}</span><span>${msg}</span>`;
+      document.getElementById('toast-container').appendChild(el);
+      setTimeout(() => el.remove(), 4000);
+    }
+
+    // ── Tabs ────────────────────────────────────────────────
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+        btn.classList.add('active');
+        document.getElementById(`tab-${btn.dataset.tab}`).classList.add('active');
+        if (btn.dataset.tab === 'analytics') loadAnalytics();
+        if (btn.dataset.tab === 'view-questions') loadQuestions();
+        if (btn.dataset.tab === 'create-quiz') loadQuestionPicker();
+      });
+    });
+
+    // ── Dynamic question type fields ─────────────────────────
+    let mcqOptions = ['', '', '', ''];
+
+    document.getElementById('q-type').addEventListener('change', renderTypeFields);
+
+    function renderTypeFields() {
+      const type = document.getElementById('q-type').value;
+      const area = document.getElementById('q-type-specific');
+
+      if (type === 'MCQ') {
+        area.innerHTML = `
+          <div class="form-group">
+            <label class="form-label">Answer Options *</label>
+            <div class="options-editor" id="mcq-opts">
+              ${mcqOptions.map((o, i) => `
+                <div class="option-row">
+                  <span style="font-weight:700;min-width:22px;color:var(--text-muted);">${['A','B','C','D'][i]}</span>
+                  <input class="form-control" placeholder="Option ${i+1}" value="${o}" data-opt="${i}" />
+                </div>`).join('')}
+            </div>
+          </div>`;
+        document.querySelectorAll('#mcq-opts input').forEach(inp => {
+          inp.addEventListener('input', e => { mcqOptions[e.target.dataset.opt] = e.target.value; });
+        });
+      } else if (type === 'true_false') {
+        area.innerHTML = `<p style="font-size:0.85rem;color:var(--text-secondary);padding:0.5rem 0;">Set the Correct Answer field to <code>true</code> or <code>false</code>.</p>`;
+      } else if (type === 'coding') {
+        area.innerHTML = `
+          <div class="form-group">
+            <label class="form-label">Test Cases (optional)</label>
+            <div id="test-cases"></div>
+            <button type="button" class="btn btn-outline btn-sm" id="add-tc" style="margin-top:0.5rem;">+ Add Test Case</button>
+          </div>`;
+        document.getElementById('add-tc').addEventListener('click', addTestCase);
+      } else {
+        area.innerHTML = '';
+      }
+    }
+
+    let testCases = [];
+    function addTestCase() {
+      const idx = testCases.length;
+      testCases.push({ input: '', expected_output: '' });
+      const tc = document.createElement('div');
+      tc.style.cssText = 'display:flex;gap:0.5rem;margin-bottom:0.5rem;';
+      tc.innerHTML = `
+        <input class="form-control" placeholder="Input" data-tc="${idx}" data-field="input" />
+        <span style="align-self:center;color:var(--text-muted);">→</span>
+        <input class="form-control" placeholder="Expected output" data-tc="${idx}" data-field="expected_output" />`;
+      tc.querySelectorAll('input').forEach(inp => {
+        inp.addEventListener('input', e => {
+          testCases[e.target.dataset.tc][e.target.dataset.field] = e.target.value;
+        });
+      });
+      document.getElementById('test-cases').appendChild(tc);
+    }
+
+    renderTypeFields();
+
+    // ── Create question ──────────────────────────────────────
+    document.getElementById('question-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const type = document.getElementById('q-type').value;
+      const attributes = {};
+
+      if (type === 'MCQ') {
+        const opts = mcqOptions.filter(o => o.trim());
+        if (opts.length < 2) { showToast('Add at least 2 options', 'error'); return; }
+        attributes.options = opts;
+        attributes.option_count = opts.length;
+      } else if (type === 'coding' && testCases.length > 0) {
+        attributes.test_cases = testCases.filter(tc => tc.input || tc.expected_output);
+      }
+
+      const body = {
+        question: document.getElementById('q-text').value.trim(),
+        type,
+        difficulty: document.getElementById('q-difficulty').value,
+        subject: document.getElementById('q-subject').value.trim(),
+        correct_answer: document.getElementById('q-correct').value.trim(),
+        attributes,
+      };
+
+      try {
+        const btn = e.target.querySelector('button[type=submit]');
+        btn.disabled = true; btn.textContent = 'Adding...';
+
+        const res = await fetch(`${API}/faculty/question`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+        });
+        const data = await res.json();
+
+        if (!res.ok) { showToast(data.error || 'Failed', 'error'); }
+        else {
+          showToast('Question added!', 'success');
+          e.target.reset();
+          mcqOptions = ['', '', '', ''];
+          testCases = [];
+          renderTypeFields();
+        }
+        btn.disabled = false; btn.textContent = '➕ Add Question';
+      } catch (err) { showToast('Error: ' + err.message, 'error'); }
+    });
+
+    // ── Load questions ───────────────────────────────────────
+    let allQuestions = [];
+
+    async function loadQuestions() {
+      const subject = document.getElementById('filter-subject').value;
+      const type    = document.getElementById('filter-type').value;
+      const diff    = document.getElementById('filter-difficulty').value;
+      const params  = new URLSearchParams({ subject, type, difficulty: diff });
+      const res     = await fetch(`${API}/faculty/questions?${params}`);
+      const data    = await res.json();
+      allQuestions  = data.questions || [];
+
+      // Populate subject filter
+      const subjects = [...new Set(allQuestions.map(q => q.subject))];
+      const sel = document.getElementById('filter-subject');
+      const cur = sel.value;
+      sel.innerHTML = `<option value="">All Subjects</option>` +
+        subjects.map(s => `<option value="${s}" ${s===cur?'selected':''}>${s}</option>`).join('');
+      if (cur) sel.value = cur;
+
+      const list = document.getElementById('questions-list');
+      if (allQuestions.length === 0) {
+        list.innerHTML = '<p style="color:var(--text-muted);text-align:center;padding:2rem;">No questions found.</p>';
+        return;
+      }
+      list.innerHTML = allQuestions.map(q => `
+        <div class="card" style="margin-bottom:0.8rem;padding:1rem 1.2rem;">
+          <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;">
+            <div>
+              <div style="font-size:0.92rem;font-weight:600;margin-bottom:0.4rem;">${q.question}</div>
+              <div style="display:flex;gap:0.5rem;flex-wrap:wrap;">
+                <span class="badge badge-info">${q.type}</span>
+                <span class="badge diff-${q.difficulty}">${q.difficulty}</span>
+                <span class="badge badge-primary">${q.subject}</span>
+              </div>
+            </div>
+            <div style="font-size:0.78rem;color:var(--text-muted);white-space:nowrap;">
+              ${q.times_answered || 0} answered
+            </div>
+          </div>
+        </div>`).join('');
+    }
+
+    document.getElementById('filter-btn').addEventListener('click', loadQuestions);
+
+    // ── Question picker for quiz creation ────────────────────
+    let selectedQIds = new Set();
+
+    async function loadQuestionPicker() {
+      const res = await fetch(`${API}/faculty/questions`);
+      const data = await res.json();
+      allQuestions = data.questions || [];
+
+      const picker = document.getElementById('question-picker');
+      if (allQuestions.length === 0) {
+        picker.innerHTML = '<p style="color:var(--text-muted);font-size:0.85rem;">No questions yet. Add questions first.</p>';
+        return;
+      }
+
+      picker.innerHTML = allQuestions.map(q => `
+        <label style="display:flex;align-items:flex-start;gap:0.7rem;padding:0.5rem;border-radius:var(--radius-sm);cursor:pointer;transition:background 0.2s ease;"
+          onmouseover="this.style.background='rgba(255,255,255,0.04)'" onmouseout="this.style.background='transparent'">
+          <input type="checkbox" value="${q._id}" style="margin-top:3px;accent-color:var(--accent-primary);" ${selectedQIds.has(q._id)?'checked':''} />
+          <div>
+            <span style="font-size:0.85rem;">${q.question.substring(0, 80)}${q.question.length > 80 ? '...' : ''}</span>
+            <div style="display:flex;gap:0.4rem;margin-top:0.25rem;">
+              <span class="badge badge-info" style="font-size:0.7rem;">${q.type}</span>
+              <span class="badge diff-${q.difficulty}" style="font-size:0.7rem;">${q.difficulty}</span>
+              <span class="badge badge-primary" style="font-size:0.7rem;">${q.subject}</span>
+            </div>
+          </div>
+        </label>`).join('');
+
+      picker.querySelectorAll('input[type=checkbox]').forEach(cb => {
+        cb.addEventListener('change', () => {
+          if (cb.checked) selectedQIds.add(cb.value);
+          else selectedQIds.delete(cb.value);
+          updateSelectedPreview();
+        });
+      });
+    }
+
+    function updateSelectedPreview() {
+      const preview = document.getElementById('selected-preview');
+      const count = selectedQIds.size;
+      if (count === 0) { preview.textContent = 'No questions selected yet.'; return; }
+      const selected = allQuestions.filter(q => selectedQIds.has(q._id));
+      preview.innerHTML = `<strong>${count} questions selected</strong><ul style="margin:0.5rem 0 0 1rem;font-size:0.83rem;line-height:1.7;">` +
+        selected.map(q => `<li>${q.question.substring(0, 60)}... <span class="badge diff-${q.difficulty}" style="font-size:0.67rem;">${q.difficulty}</span></li>`).join('') +
+        `</ul>`;
+    }
+
+    // ── Create quiz ──────────────────────────────────────────
+    document.getElementById('quiz-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      if (selectedQIds.size === 0) { showToast('Select at least one question', 'error'); return; }
+
+      const body = {
+        title:        document.getElementById('quiz-title').value.trim(),
+        subject:      document.getElementById('quiz-subject').value.trim(),
+        duration:     parseInt(document.getElementById('quiz-duration').value),
+        question_ids: [...selectedQIds],
+      };
+
+      const btn = e.target.querySelector('button[type=submit]');
+      btn.disabled = true; btn.textContent = 'Creating...';
+
+      try {
+        const res = await fetch(`${API}/faculty/quiz`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+        });
+        const data = await res.json();
+        if (!res.ok) showToast(data.error || 'Failed', 'error');
+        else {
+          showToast(`Quiz "${data.quiz.title}" created! ID: ${data.quiz._id}`, 'success');
+          e.target.reset();
+          selectedQIds.clear();
+          updateSelectedPreview();
+        }
+      } catch (err) { showToast(err.message, 'error'); }
+
+      btn.disabled = false; btn.textContent = '📋 Create Quiz';
+    });
+
+    // ── Analytics ────────────────────────────────────────────
+    async function loadAnalytics() {
+      const endpoints = [
+        { url: '/faculty/analytics/avg-score',         el: 'analytics-avg',     key: 'avgScorePerQuiz',    render: renderAvg },
+        { url: '/faculty/analytics/top-students',       el: 'analytics-top',     key: 'top5Students',       render: renderTop },
+        { url: '/faculty/analytics/difficult-questions',el: 'analytics-hard',    key: 'hardQuestions',      render: renderHard },
+        { url: '/faculty/analytics/subject-comparison', el: 'analytics-subject', key: 'subjectComparison',  render: renderSubject },
+      ];
+
+      for (const ep of endpoints) {
+        try {
+          const res = await fetch(`${API}${ep.url}`);
+          const data = await res.json();
+          ep.render(document.getElementById(ep.el), data[ep.key] || []);
+        } catch (e) {
+          document.getElementById(ep.el).innerHTML = `<p style="color:var(--accent-danger);font-size:0.82rem;">Error loading data</p>`;
+        }
+      }
+    }
+
+    function renderAvg(el, rows) {
+      if (!rows.length) { el.innerHTML = '<p style="color:var(--text-muted);font-size:0.82rem;">No attempts yet.</p>'; return; }
+      el.innerHTML = `<table class="analytics-table">
+        <thead><tr><th>Quiz</th><th>Avg Score</th><th>Attempts</th><th>%</th></tr></thead>
+        <tbody>${rows.map(r => `<tr>
+          <td>${r.quizTitle || 'Unknown'}</td>
+          <td><span style="color:var(--accent-secondary);font-weight:600;">${r.averageScore}</span></td>
+          <td>${r.totalAttempts}</td>
+          <td><span class="badge ${r.percentage >= 70 ? 'badge-success' : r.percentage >= 40 ? 'badge-warning' : 'badge-danger'}">${r.percentage}%</span></td>
+        </tr>`).join('')}</tbody>
+      </table>`;
+    }
+
+    function renderTop(el, rows) {
+      if (!rows.length) { el.innerHTML = '<p style="color:var(--text-muted);font-size:0.82rem;">No students yet.</p>'; return; }
+      const medals = ['🥇','🥈','🥉'];
+      el.innerHTML = `<div class="leaderboard-list">
+        ${rows.map((r, i) => `<div class="lb-item rank-${i+1}">
+          <span class="lb-rank">${medals[i] || i+1}</span>
+          <span class="lb-name">${r.studentId}</span>
+          <span class="lb-score">${r.totalScore}</span>
+        </div>`).join('')}
+      </div>`;
+    }
+
+    function renderHard(el, rows) {
+      if (!rows.length) { el.innerHTML = '<p style="color:var(--text-muted);font-size:0.82rem;">No questions with &lt;30% correct rate yet.</p>'; return; }
+      el.innerHTML = `<table class="analytics-table">
+        <thead><tr><th>Question</th><th>Correct Rate</th><th>Type</th></tr></thead>
+        <tbody>${rows.map(r => `<tr>
+          <td style="font-size:0.8rem;">${r.question.substring(0,50)}...</td>
+          <td><span class="badge badge-danger">${Math.round(r.correctRate * 100)}%</span></td>
+          <td><span class="badge badge-info">${r.type}</span></td>
+        </tr>`).join('')}</tbody>
+      </table>`;
+    }
+
+    function renderSubject(el, rows) {
+      if (!rows.length) { el.innerHTML = '<p style="color:var(--text-muted);font-size:0.82rem;">No data yet.</p>'; return; }
+      el.innerHTML = `<table class="analytics-table">
+        <thead><tr><th>Subject</th><th>Avg</th><th>High</th><th>Attempts</th></tr></thead>
+        <tbody>${rows.map(r => `<tr>
+          <td>${r.subject}</td>
+          <td style="color:var(--accent-secondary);font-weight:600;">${r.avgScore}</td>
+          <td>${r.highestScore}</td>
+          <td>${r.totalAttempts}</td>
+        </tr>`).join('')}</tbody>
+      </table>`;
+    }
+
+    // Load initial data
+    loadQuestions();
+  </script>
+</body>
+</html>

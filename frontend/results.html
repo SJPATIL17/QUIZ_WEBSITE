@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Results — QuizPlatform</title>
+  <meta name="description" content="View your quiz results, rank, and score breakdown." />
+  <link rel="stylesheet" href="css/style.css" />
+  <style>
+    .results-grid {
+      display: grid;
+      grid-template-columns: 360px 1fr;
+      gap: 1.5rem;
+      padding: 2rem 0;
+      align-items: start;
+    }
+    @media (max-width: 768px) {
+      .results-grid { grid-template-columns: 1fr; }
+    }
+    .confetti-emoji {
+      font-size: 3rem;
+      display: block;
+      text-align: center;
+      animation: pop 0.5s ease;
+    }
+    @keyframes pop {
+      0%   { transform: scale(0); opacity: 0; }
+      80%  { transform: scale(1.15); }
+      100% { transform: scale(1); opacity: 1; }
+    }
+    .answer-num {
+      min-width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.06);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.75rem;
+      font-weight: 700;
+      flex-shrink: 0;
+    }
+  </style>
+</head>
+<body>
+
+  <nav class="navbar">
+    <div class="container navbar-inner">
+      <div class="navbar-brand"><span class="icon">⚡</span> QuizPlatform</div>
+      <div class="navbar-links">
+        <a href="/">🏠 Home</a>
+      </div>
+    </div>
+  </nav>
+
+  <div id="loading-screen" class="loading-screen">
+    <div class="spinner"></div>
+    <p>Loading results...</p>
+  </div>
+
+  <div id="error-screen" style="display:none;" class="loading-screen">
+    <span style="font-size:3rem">😕</span>
+    <h2>No results found</h2>
+    <p>Looks like you haven't completed a quiz yet.</p>
+    <a href="/" class="btn btn-primary" style="margin-top:1rem;">← Take a Quiz</a>
+  </div>
+
+  <div id="results-main" style="display:none;">
+    <div class="container">
+
+      <div class="results-grid">
+
+        <!-- Left column: summary -->
+        <div>
+          <!-- Rank + Score card -->
+          <div class="card card-glow" style="text-align:center;padding:2rem;">
+            <span class="confetti-emoji" id="result-emoji">🎉</span>
+            <div class="rank-badge" id="rank-badge" style="margin-top:1rem;">
+              <span id="rank-value">—</span>
+            </div>
+            <div style="font-size:0.8rem;color:var(--text-muted);margin-bottom:1.5rem;">YOUR RANK</div>
+
+            <div class="score-ring-wrapper">
+              <div class="score-ring">
+                <svg width="150" height="150" viewBox="0 0 150 150">
+                  <circle cx="75" cy="75" r="60" fill="none" stroke="rgba(255,255,255,0.05)" stroke-width="10"/>
+                  <circle id="score-arc" cx="75" cy="75" r="60" fill="none"
+                    stroke="url(#scoreGrad)" stroke-width="10"
+                    stroke-linecap="round"
+                    stroke-dasharray="376.99"
+                    stroke-dashoffset="376.99"
+                    style="transition: stroke-dashoffset 1.2s ease;"/>
+                  <defs>
+                    <linearGradient id="scoreGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+                      <stop offset="0%" style="stop-color:#6c63ff"/>
+                      <stop offset="100%" style="stop-color:#3ecfcf"/>
+                    </linearGradient>
+                  </defs>
+                </svg>
+                <div class="score-ring-number" id="score-percent">0%</div>
+                <div class="score-ring-label">score</div>
+              </div>
+            </div>
+
+            <div class="stats-grid" style="margin-top:1rem;">
+              <div class="stat-box">
+                <div class="stat-value" id="stat-score">0</div>
+                <div class="stat-label">Points</div>
+              </div>
+              <div class="stat-box">
+                <div class="stat-value" id="stat-correct">0</div>
+                <div class="stat-label">Correct</div>
+              </div>
+              <div class="stat-box">
+                <div class="stat-value" id="stat-wrong">0</div>
+                <div class="stat-label">Wrong</div>
+              </div>
+              <div class="stat-box">
+                <div class="stat-value" id="stat-time">—</div>
+                <div class="stat-label">Time</div>
+              </div>
+            </div>
+
+            <div style="margin-top:1.5rem;display:flex;flex-direction:column;gap:0.6rem;">
+              <a href="/" class="btn btn-primary">🔁 Take Another Quiz</a>
+              <div id="leaderboard-mini" style="margin-top:0.5rem;"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right column: answer breakdown -->
+        <div>
+          <div class="card">
+            <h3 style="margin-bottom:1.2rem;">📋 Answer Breakdown</h3>
+            <div class="answer-review" id="answer-review"></div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const API = '';
+
+    function formatTime(s) {
+      const m = Math.floor(s / 60);
+      const sec = s % 60;
+      return `${m}m ${sec}s`;
+    }
+
+    function getRankClass(rank) {
+      if (rank === 1) return 'gold';
+      if (rank === 2) return 'silver';
+      if (rank === 3) return 'bronze';
+      return 'other';
+    }
+
+    function getRankEmoji(rank) {
+      if (rank === 1) return '🏆';
+      if (rank === 2) return '🥈';
+      if (rank === 3) return '🥉';
+      return '🎓';
+    }
+
+    async function loadResults() {
+      const raw = sessionStorage.getItem('quizResults');
+      if (!raw) {
+        document.getElementById('loading-screen').style.display = 'none';
+        document.getElementById('error-screen').style.display = 'flex';
+        return;
+      }
+
+      const data = JSON.parse(raw);
+      document.getElementById('loading-screen').style.display = 'none';
+      document.getElementById('results-main').style.display = 'block';
+
+      // ── Rank ────────────────────────────────────────────────
+      const rank = data.rank || '?';
+      const rankBadge = document.getElementById('rank-badge');
+      rankBadge.classList.add(getRankClass(rank));
+      document.getElementById('rank-value').textContent = `#${rank}`;
+      document.getElementById('result-emoji').textContent = getRankEmoji(rank);
+
+      // ── Score ring ───────────────────────────────────────────
+      const score = data.score || 0;
+      const maxScore = data.maxScore || 1;
+      const pct = Math.round((score / maxScore) * 100);
+      document.getElementById('score-percent').textContent = `${pct}%`;
+
+      // Animate ring
+      const circumference = 376.99;
+      setTimeout(() => {
+        const offset = circumference * (1 - pct / 100);
+        document.getElementById('score-arc').style.strokeDashoffset = offset;
+      }, 300);
+
+      // ── Stats ────────────────────────────────────────────────
+      const answers = data.answers || [];
+      const correct = answers.filter(a => a.is_correct).length;
+      const wrong   = answers.filter(a => !a.is_correct && a.given_answer).length;
+      const skipped = answers.filter(a => !a.given_answer).length;
+
+      document.getElementById('stat-score').textContent   = score;
+      document.getElementById('stat-correct').textContent = correct;
+      document.getElementById('stat-wrong').textContent   = wrong;
+      document.getElementById('stat-time').textContent    = formatTime(data.timeTaken || 0);
+
+      // ── Answer breakdown ─────────────────────────────────────
+      const review = document.getElementById('answer-review');
+      const questions = data.questions || [];
+
+      review.innerHTML = answers.map((a, i) => {
+        const q = questions[i] || {};
+        const cls = !a.given_answer ? 'skipped' : a.is_correct ? 'correct' : 'wrong';
+        const icon = cls === 'correct' ? '✅' : cls === 'wrong' ? '❌' : '⏭️';
+
+        const givenHTML = a.given_answer
+          ? `<span class="review-given">Your answer: <b>${a.given_answer}</b></span>`
+          : `<span class="review-skipped">Skipped</span>`;
+
+        const correctHTML = !a.is_correct
+          ? `<span class="review-correct">Correct: <b>${a.correct_answer}</b></span>`
+          : '';
+
+        return `<div class="review-item ${cls}">
+          <div style="display:flex;align-items:flex-start;gap:0.7rem;">
+            <div class="answer-num">${i + 1}</div>
+            <div style="flex:1;">
+              <div class="review-question">${q.question || `Question ${i + 1}`}</div>
+              <div class="review-answers">
+                ${icon} ${givenHTML}
+                ${correctHTML}
+                <span style="color:var(--text-muted);font-size:0.78rem;">+${a.points || 0} pts</span>
+              </div>
+            </div>
+          </div>
+        </div>`;
+      }).join('');
+
+      if (answers.length === 0) {
+        review.innerHTML = '<p style="color:var(--text-muted);text-align:center;">No answers recorded.</p>';
+      }
+
+      // ── Leaderboard mini ─────────────────────────────────────
+      try {
+        const lbRes = await fetch(`${API}/quiz/${data.quizId}/leaderboard`);
+        const lbData = await lbRes.json();
+        const entries = (lbData.leaderboard || []).slice(0, 5);
+        const medals = ['🥇', '🥈', '🥉'];
+        document.getElementById('leaderboard-mini').innerHTML = `
+          <div class="section-header" style="margin-top:0.5rem;">
+            <span class="live-dot"></span>
+            <span class="section-title">Top 5 Leaderboard</span>
+          </div>
+          <div class="leaderboard-list">
+            ${entries.map(e => `
+              <div class="lb-item rank-${e.rank}" style="${e.studentId === data.studentId ? 'border-color:var(--accent-primary);background:rgba(108,99,255,0.1);' : ''}">
+                <span class="lb-rank">${medals[e.rank - 1] || e.rank}</span>
+                <span class="lb-name">${e.studentId}${e.studentId === data.studentId ? ' <b>(you)</b>' : ''}</span>
+                <span class="lb-score">${e.score}</span>
+              </div>`).join('')}
+          </div>`;
+      } catch (e) {}
+    }
+
+    loadResults();
+  </script>
+</body>
+</html>
